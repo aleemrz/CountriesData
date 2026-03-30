@@ -7,6 +7,7 @@
 
 import Foundation
 import UIKit
+import Combine
 
 enum ViewState: Equatable {
     case idle
@@ -20,12 +21,11 @@ final class CountriesViewModel {
     private let countriesURL = URL(string: "https://gist.githubusercontent.com/peymano-wmt/32dcb892b06648910ddd40406e37fdab/raw/db25946fd77c5873b0303b858e861ce724e0dcd0/countries.json")
 
     private var allCountries: [Country] = []
-    private(set) var filteredCountries: [Country] = []
-    private(set) var viewState: ViewState = .idle {
-        didSet { onStateChanged?(viewState) }
-    }
-
-    var onStateChanged: ((ViewState) -> Void)?
+//    private(set) var filteredCountries: [Country] = []
+    @Published private(set) var filteredCountries: [Country] = []
+    @Published private(set) var viewState: ViewState = .idle
+    @Published var searchQuery: String = ""
+    private var cancellables = Set<AnyCancellable>()
     var onCountriesUpdated: (() -> Void)?
 
     var numberOfRows: Int {
@@ -38,6 +38,13 @@ final class CountriesViewModel {
     /// - Parameter networkService: Service responsible for fetching country data. Defaults to `NetworkService()`.
     init(networkService: NetworkServiceProtocol = NetworkService()) {
         self.networkService = networkService
+
+        $searchQuery
+            .debounce(for: .milliseconds(300), scheduler: DispatchQueue.main)
+            .sink { [weak self] query in
+                self?.applyFilter(query)
+            }
+            .store(in: &cancellables)
     }
     
     // MARK: - Data Fetching
@@ -49,16 +56,19 @@ final class CountriesViewModel {
             viewState = .error(NetworkError.invalidURL.localizedDescription)
             return
         }
+
         viewState = .loading
+
         networkService.fetchCountries(from: url) { [weak self] result in
             guard let self = self else { return }
+
             DispatchQueue.main.async {
                 switch result {
                 case .success(let countries):
                     self.allCountries = countries
                     self.filteredCountries = countries
                     self.viewState = .loaded
-                    self.onCountriesUpdated?()
+
                 case .failure(let error):
                     self.viewState = .error(error.localizedDescription)
                 }
@@ -73,6 +83,7 @@ final class CountriesViewModel {
     /// Updates `filteredCountries` and triggers `onCountriesUpdated`.
     func filterCountries(with query: String) {
         let trimmed = query.trimmingCharacters(in: .whitespaces)
+
         if trimmed.isEmpty {
             filteredCountries = allCountries
         } else {
@@ -81,7 +92,7 @@ final class CountriesViewModel {
                 $0.capital.localizedCaseInsensitiveContains(trimmed)
             }
         }
-        onCountriesUpdated?()
+        filteredCountries = Array(filteredCountries)
     }
     
     // MARK: - Data Access
@@ -92,5 +103,18 @@ final class CountriesViewModel {
     func country(at indexPath: IndexPath) -> Country? {
         guard indexPath.row < filteredCountries.count else { return nil }
         return filteredCountries[indexPath.row]
+    }
+    
+    private func applyFilter(_ query: String) {
+        let trimmed = query.trimmingCharacters(in: .whitespaces)
+
+        if trimmed.isEmpty {
+            filteredCountries = allCountries
+        } else {
+            filteredCountries = allCountries.filter {
+                $0.name.localizedCaseInsensitiveContains(trimmed) ||
+                $0.capital.localizedCaseInsensitiveContains(trimmed)
+            }
+        }
     }
 }

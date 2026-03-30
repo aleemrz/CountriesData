@@ -11,7 +11,7 @@
         <!--Countries View Controller-->
         <scene sceneID="CountriesScene">
             <objects>
-                <viewController id="CountriesVC" customClass="CountriesViewController" customModule="CountriesData" customModuleProvider="target" sceneMemberID="viewController">
+                <viewController storyboardIdentifier="CountriesViewController" id="CountriesVC" customClass="CountriesViewController" customModule="CountriesData" customModuleProvider="target" sceneMemberID="viewController">
                     <view key="view" contentMode="scaleToFill" id="view1">
                         <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
@@ -44,6 +44,7 @@
                             <constraint firstItem="tableView" firstAttribute="trailing" secondItem="view1" secondAttribute="trailing" id="tableViewTrailing"/>
                         </constraints>
                     </view>
+                    <navigationItem key="navigationItem" id="Lc5-ep-wh3"/>
                     <connections>
                         <outlet property="activityIndicator" destination="activityIndicator" id="1hE-ga-aPS"/>
                         <outlet property="emptyStateLabel" destination="emptyStateLabel" id="vAr-yL-Q65"/>
@@ -52,7 +53,23 @@
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="firstResponder" userLabel="First Responder" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="139" y="131"/>
+            <point key="canvasLocation" x="787" y="114"/>
+        </scene>
+        <!--Navigation Controller-->
+        <scene sceneID="2v6-XP-4NN">
+            <objects>
+                <navigationController id="PO7-eF-zuI" sceneMemberID="viewController">
+                    <navigationBar key="navigationBar" contentMode="scaleToFill" id="F1a-JY-jKJ">
+                        <rect key="frame" x="0.0" y="118" width="393" height="54"/>
+                        <autoresizingMask key="autoresizingMask"/>
+                    </navigationBar>
+                    <connections>
+                        <segue destination="CountriesVC" kind="relationship" relationship="rootViewController" id="e5l-6U-vBu"/>
+                    </connections>
+                </navigationController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="PHt-qH-Q13" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="-669" y="105"/>
         </scene>
     </scenes>
     <resources>

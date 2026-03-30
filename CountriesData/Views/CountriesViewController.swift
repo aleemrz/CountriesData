@@ -5,6 +5,7 @@
 //
 
 import UIKit
+import Combine
 
 final class CountriesViewController: UIViewController {
 
@@ -14,6 +15,8 @@ final class CountriesViewController: UIViewController {
 
     private let searchController = UISearchController(searchResultsController: nil)
     private var viewModel: CountriesViewModel = CountriesViewModel()
+    
+    private var cancellables = Set<AnyCancellable>()
 
     /// Instantiates the `CountriesViewController` from the storyboard.
     /// - Parameter viewModel: Optional ViewModel to use for the controller. Defaults to a new instance.
@@ -32,6 +35,9 @@ final class CountriesViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "Countries"
+        navigationController?.navigationBar.prefersLargeTitles = true
+        navigationItem.largeTitleDisplayMode = .automatic
+        navigationItem.hidesSearchBarWhenScrolling = false
         setupTableView()
         setupSearchController()
         bindViewModel()
@@ -47,6 +53,9 @@ final class CountriesViewController: UIViewController {
         tableView.estimatedRowHeight = 80
         tableView.keyboardDismissMode = .onDrag
         tableView.separatorStyle = .singleLine
+        if traitCollection.userInterfaceIdiom == .pad {
+            tableView.cellLayoutMarginsFollowReadableWidth = true
+        }
         tableView.register(UINib(nibName: "CountryCell", bundle: nil),
                            forCellReuseIdentifier: CountryCell.reuseIdentifier)
     }
@@ -58,6 +67,7 @@ final class CountriesViewController: UIViewController {
         searchController.obscuresBackgroundDuringPresentation = false
         searchController.searchBar.placeholder = "Search by name or capital"
         navigationItem.searchController = searchController
+        navigationItem.preferredSearchBarPlacement = .stacked
         navigationItem.hidesSearchBarWhenScrolling = false
         definesPresentationContext = true
     }
@@ -67,30 +77,40 @@ final class CountriesViewController: UIViewController {
     /// Binds ViewModel state and data updates to the UI.
     /// Handles loading indicators, table view visibility, empty state, and error presentation.
     private func bindViewModel() {
-        viewModel.onStateChanged = { [weak self] state in
-            guard let self = self else { return }
-            switch state {
-            case .loading:
-                self.activityIndicator.startAnimating()
-                self.tableView.isHidden = true
-                self.emptyStateLabel.isHidden = true
-            case .loaded:
-                self.activityIndicator.stopAnimating()
-                self.tableView.isHidden = false
-            case .error(let message):
-                self.activityIndicator.stopAnimating()
-                self.tableView.isHidden = true
-                self.showError(message: message)
-            case .idle:
-                break
-            }
-        }
+        viewModel.$viewState
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] state in
+                guard let self = self else { return }
 
-        viewModel.onCountriesUpdated = { [weak self] in
-            guard let self = self else { return }
-            self.tableView.reloadData()
-            self.emptyStateLabel.isHidden = self.viewModel.numberOfRows > 0
-        }
+                switch state {
+                case .loading:
+                    self.activityIndicator.startAnimating()
+                    self.tableView.isHidden = true
+                    self.emptyStateLabel.isHidden = true
+
+                case .loaded:
+                    self.activityIndicator.stopAnimating()
+                    self.tableView.isHidden = false
+
+                case .error(let message):
+                    self.activityIndicator.stopAnimating()
+                    self.tableView.isHidden = true
+                    self.showError(message: message)
+
+                case .idle:
+                    break
+                }
+            }
+            .store(in: &cancellables)
+
+        viewModel.$filteredCountries
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self = self else { return }
+                self.tableView.reloadData()
+                self.emptyStateLabel.isHidden = self.viewModel.numberOfRows > 0
+            }
+            .store(in: &cancellables)
     }
 
     // MARK: - Error Handling
@@ -152,7 +172,6 @@ extension CountriesViewController: UISearchResultsUpdating {
     /// Updates the filtered countries in the ViewModel based on the search query.
     /// - Parameter searchController: The search controller providing the search text.
     func updateSearchResults(for searchController: UISearchController) {
-        let query = searchController.searchBar.text ?? ""
-        viewModel.filterCountries(with: query)
+        viewModel.searchQuery = searchController.searchBar.text ?? ""
     }
 }

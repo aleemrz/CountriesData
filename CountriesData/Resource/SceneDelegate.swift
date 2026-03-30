@@ -19,10 +19,13 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let windowScene = scene as? UIWindowScene else { return }
         
         let storyboard = UIStoryboard(name: "Main", bundle: .main)
-        let rootViewController = storyboard.instantiateInitialViewController()
-        
+
+        let vc = storyboard.instantiateViewController(withIdentifier: "CountriesViewController") as! CountriesViewController
+
+        let navController = UINavigationController(rootViewController: vc)
+
         window = UIWindow(windowScene: windowScene)
-        window?.rootViewController = rootViewController
+        window?.rootViewController = navController
         window?.makeKeyAndVisible()
     }
 
